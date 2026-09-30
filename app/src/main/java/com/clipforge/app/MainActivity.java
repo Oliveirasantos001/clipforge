@@ -54,6 +54,11 @@ public final class MainActivity extends Activity implements ClipForgeView.Action
 
     @Override protected void onCreate(Bundle b){
         super.onCreate(b);
+        getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE);
+        if(BuildConfig.RELEASE_INTEGRITY_ENFORCED&&!IntegrityGuard.isTrusted(this)){
+            blockTamperedBuild();
+            return;
+        }
         getWindow().setStatusBarColor(android.graphics.Color.rgb(8,9,16));
         getWindow().setNavigationBarColor(android.graphics.Color.rgb(8,9,16));
 
@@ -67,8 +72,10 @@ public final class MainActivity extends Activity implements ClipForgeView.Action
 
         root=new FrameLayout(this);
         ui=new ClipForgeView(this,s,this);
+        ui.setFilterTouchesWhenObscured(true);
         root.addView(ui,new FrameLayout.LayoutParams(-1,-1));
         video=new VideoView(this);
+        video.setFilterTouchesWhenObscured(true);
         video.setVisibility(View.GONE);
         root.addView(video,new FrameLayout.LayoutParams(1,1));
         setContentView(root);
@@ -92,6 +99,12 @@ public final class MainActivity extends Activity implements ClipForgeView.Action
 
     @Override protected void onResume(){
         super.onResume();
+        if(BuildConfig.RELEASE_INTEGRITY_ENFORCED&&!IntegrityGuard.isTrusted(this)){
+            blockTamperedBuild();
+            return;
+        }
+        ClipCleanupJobService.cleanupNow(this);
+        ClipCleanupJobService.scheduleNext(this);
         enforceVpnPolicy();
     }
 
@@ -141,7 +154,25 @@ public final class MainActivity extends Activity implements ClipForgeView.Action
         return false;
     }
 
+    private void blockTamperedBuild(){
+        try{
+            if(isFinishing()||isDestroyed())return;
+            new AlertDialog.Builder(this)
+                .setTitle("Integridade do aplicativo")
+                .setMessage("Esta instalação do ClipForge não pôde ser validada como uma versão oficial. Por segurança, o aplicativo será fechado.")
+                .setCancelable(false)
+                .setPositiveButton("Fechar",(d,w)->finishAffinity())
+                .show();
+        }catch(Exception ignored){
+            finishAffinity();
+        }
+    }
+
     @Override public void onAction(String a){
+        if(BuildConfig.RELEASE_INTEGRITY_ENFORCED&&!IntegrityGuard.isTrusted(this)){
+            blockTamperedBuild();
+            return;
+        }
         if(blockedByVpn())return;
         switch(a){
             case "back":back();break;
