@@ -76,21 +76,27 @@ jobs:
       - name: Restore release signing key
         shell: bash
         env:
-          KEYSTORE_B64: ${{ secrets.CLIPFORGE_KEYSTORE_B64 }}
+          CLIPFORGE_SIGNING_BUNDLE: ${{ secrets.CLIPFORGE_SIGNING_BUNDLE }}
         run: |
           set +x
-          test -n "$KEYSTORE_B64" || { echo "Missing CLIPFORGE_KEYSTORE_B64 secret"; exit 1; }
-          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/clipforge-release.jks"
-          chmod 600 "$RUNNER_TEMP/clipforge-release.jks"
+          test -n "$CLIPFORGE_SIGNING_BUNDLE" || { echo "Missing CLIPFORGE_SIGNING_BUNDLE secret"; exit 1; }
+          python - <<'PY'
+          import base64, json, os, pathlib
+          bundle=json.loads(os.environ["CLIPFORGE_SIGNING_BUNDLE"])
+          root=pathlib.Path(os.environ["RUNNER_TEMP"])
+          (root/"clipforge-release.jks").write_bytes(base64.b64decode(bundle["keystore_b64"]))
+          (root/"clipforge-signing.pass").write_text(bundle["password"])
+          PY
+          chmod 600 "$RUNNER_TEMP/clipforge-release.jks" "$RUNNER_TEMP/clipforge-signing.pass"
 
       - name: Build signed release APK
-        env:
-          CLIPFORGE_KEYSTORE_PATH: ${{ runner.temp }}/clipforge-release.jks
-          CLIPFORGE_STORE_PASSWORD: ${{ secrets.CLIPFORGE_STORE_PASSWORD }}
-          CLIPFORGE_KEY_PASSWORD: ${{ secrets.CLIPFORGE_KEY_PASSWORD }}
+        shell: bash
         run: |
-          test -n "$CLIPFORGE_STORE_PASSWORD" || { echo "Missing CLIPFORGE_STORE_PASSWORD secret"; exit 1; }
-          test -n "$CLIPFORGE_KEY_PASSWORD" || { echo "Missing CLIPFORGE_KEY_PASSWORD secret"; exit 1; }
+          set +x
+          PASS="$(cat "$RUNNER_TEMP/clipforge-signing.pass")"
+          export CLIPFORGE_KEYSTORE_PATH="$RUNNER_TEMP/clipforge-release.jks"
+          export CLIPFORGE_STORE_PASSWORD="$PASS"
+          export CLIPFORGE_KEY_PASSWORD="$PASS"
           gradle :app:assembleRelease --stacktrace
 
       - name: Verify official APK signature
@@ -114,7 +120,7 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: Remove signing key from runner
+      - name: Remove signing material from runner
         if: always()
         shell: bash
-        run: rm -f "$RUNNER_TEMP/clipforge-release.jks"
+        run: rm -f "$RUNNER_TEMP/clipforge-release.jks" "$RUNNER_TEMP/clipforge-signing.pass"
