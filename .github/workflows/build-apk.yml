@@ -46,6 +46,16 @@ jobs:
       - name: Compile debug validation build
         run: gradle :app:assembleDebug --stacktrace
 
+      - name: Debug APK SHA-256
+        run: sha256sum app/build/outputs/apk/debug/app-debug.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ClipForge-v0.2.1-debug-validation
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+
   signed-release:
     if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
