@@ -2,6 +2,14 @@ plugins {
     id 'com.android.application'
 }
 
+def clipforgeKeystorePath = System.getenv("CLIPFORGE_KEYSTORE_PATH")
+def clipforgeStorePassword = System.getenv("CLIPFORGE_STORE_PASSWORD")
+def clipforgeKeyPassword = System.getenv("CLIPFORGE_KEY_PASSWORD")
+def clipforgeSigningReady =
+    clipforgeKeystorePath != null && !clipforgeKeystorePath.isBlank() &&
+    clipforgeStorePassword != null && !clipforgeStorePassword.isBlank() &&
+    clipforgeKeyPassword != null && !clipforgeKeyPassword.isBlank()
+
 android {
     namespace 'com.clipforge.app'
     compileSdk 35
@@ -10,27 +18,70 @@ android {
         applicationId 'com.clipforge.app'
         minSdk 26
         targetSdk 35
-        versionCode 4
-        versionName '0.2.0'
+        versionCode 5
+        versionName '0.2.1'
 
         buildConfigField 'String', 'MAIN_SUPABASE_URL', '"https://numasmkmeigyhwhqeffa.supabase.co"'
         buildConfigField 'String', 'MAIN_SUPABASE_KEY', '"sb_publishable_wafPUN1tFI19Y8Rwc38HXg_QuZwaPxZ"'
         buildConfigField 'boolean', 'CLOUD_PIPELINE_ENABLED', 'false'
+        buildConfigField 'String', 'OFFICIAL_CERT_SHA256', '"d37f12ff05a1eaa12a2d42281852ac7150d52df7667bf1628dd385104efbb88c"'
+        buildConfigField 'boolean', 'RELEASE_INTEGRITY_ENFORCED', 'false'
+    }
+
+    signingConfigs {
+        release {
+            if (clipforgeSigningReady) {
+                storeFile file(clipforgeKeystorePath)
+                storePassword clipforgeStorePassword
+                keyAlias 'clipforge'
+                keyPassword clipforgeKeyPassword
+                enableV1Signing true
+                enableV2Signing true
+                enableV3Signing true
+                enableV4Signing true
+            }
+        }
     }
 
     buildFeatures { buildConfig true }
 
     buildTypes {
+        debug {
+            minifyEnabled false
+            debuggable true
+            buildConfigField 'boolean', 'RELEASE_INTEGRITY_ENFORCED', 'false'
+        }
         release {
             minifyEnabled true
             shrinkResources true
+            debuggable false
+            jniDebuggable false
+            zipAlignEnabled true
+            buildConfigField 'boolean', 'RELEASE_INTEGRITY_ENFORCED', 'true'
+            if (clipforgeSigningReady) {
+                signingConfig signingConfigs.release
+            }
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
-        debug { minifyEnabled false }
     }
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+gradle.taskGraph.whenReady { graph ->
+    boolean wantsRelease = graph.allTasks.any { task ->
+        task.path.toLowerCase().contains("release") &&
+        (task.name.toLowerCase().contains("assemble") ||
+         task.name.toLowerCase().contains("bundle") ||
+         task.name.toLowerCase().contains("package"))
+    }
+    if (wantsRelease && !clipforgeSigningReady) {
+        throw new GradleException(
+            "Release signing is mandatory. Configure CLIPFORGE_KEYSTORE_PATH, " +
+            "CLIPFORGE_STORE_PASSWORD and CLIPFORGE_KEY_PASSWORD."
+        )
     }
 }
