@@ -77,4 +77,22 @@ public final class ClipForgeView extends View {
     private void security(Canvas c){title(c,"Segurança e Privacidade");t(c,"Segurança",20,72,14,TEXT,true);String[] a={"Alterar senha","Sessões conectadas","Autenticação em duas etapas","Sair de todos os dispositivos"};float y=88;for(String x:a){box(c,20,y,340,y+35,8,CARD);t(c,x,36,y+23,9,x.startsWith("Sair")?RED:TEXT,false);y+=41;}t(c,"Privacidade",20,y+15,14,TEXT,true);y+=27;toggle(c,y,"Vídeos privados por padrão",true);y+=43;toggle(c,y,"Excluir vídeos após processamento",false);y+=43;toggle(c,y,"Uso de dados para melhorar o serviço",true);y+=51;String[] b={"Baixar meus dados","Excluir meus dados","Política de Privacidade"};for(String x:b){box(c,20,y,340,y+35,8,CARD);t(c,x,36,y+23,9,TEXT,false);y+=41;}}
     private void toggle(Canvas c,float y,String n,boolean on){box(c,20,y,340,y+37,8,CARD);t(c,n,34,y+23,9,TEXT,false);box(c,292,y+9,328,y+28,10,on?PURPLE:Color.rgb(55,55,67));p.setColor(Color.WHITE);c.drawCircle(on?318:302,y+18.5f,7,p);}
     private void storage(Canvas c){title(c,"Armazenamento");tc(c,"30 min",180,120,28,TEXT,true);tc(c,"retenção dos clips temporários",180,143,9,MUTED,false);box(c,20,185,340,248,11,CARD);t(c,"Clips temporários",34,210,11,TEXT,true);t(c,"Excluídos automaticamente após 30 minutos.",34,232,9,MUTED,false);box(c,20,262,340,325,11,CARD);t(c,"Vídeos exportados",34,287,11,TEXT,true);t(c,"Permanecem no dispositivo até você apagá-los.",34,309,9,MUTED,false);box(c,20,339,340,402,11,CARD);t(c,"Processamento em nuvem",34,364,11,TEXT,true);t(c,"Desativado até os storages serem validados com segurança.",34,386,8,MUTED,false);button(c,"Limpar temporários agora",20,430,340,478,"cleanup_local",true);}
+    private String shorten(String x,int n){
+        if(x==null)return "";
+        return x.length()<=n?x:x.substring(0,Math.max(0,n-1))+"…";
+    }
+
+    private String time(long ms){
+        long q=Math.max(0,ms/1000L);
+        return String.format(Locale.US,"%02d:%02d",q/60L,q%60L);
+    }
+
+    private String bytes(long b){
+        if(b<=0)return "—";
+        double m=b/1048576d;
+        return m<1024d
+            ?String.format(Locale.US,"%.0f MB",m)
+            :String.format(Locale.US,"%.1f GB",m/1024d);
+    }
+
 }
