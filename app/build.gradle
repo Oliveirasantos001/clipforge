@@ -10,15 +10,11 @@ android {
         applicationId 'com.clipforge.app'
         minSdk 26
         targetSdk 35
-        versionCode 3
-        versionName '0.1.2'
+        versionCode 4
+        versionName '0.2.0'
 
         buildConfigField 'String', 'MAIN_SUPABASE_URL', '"https://numasmkmeigyhwhqeffa.supabase.co"'
         buildConfigField 'String', 'MAIN_SUPABASE_KEY', '"sb_publishable_wafPUN1tFI19Y8Rwc38HXg_QuZwaPxZ"'
-        buildConfigField 'String', 'RAW_SUPABASE_URL', '"https://njrxnswmlaxzhoatgzlm.supabase.co"'
-        buildConfigField 'String', 'RAW_SUPABASE_KEY', '"sb_publishable_nqWaKXH0HI18g8sE_J6-tw_6GGBoJqu"'
-        buildConfigField 'String', 'CLIPS_SUPABASE_URL', '"https://yjwtmuljitfykhhrphkn.supabase.co"'
-        buildConfigField 'String', 'CLIPS_SUPABASE_KEY', '"sb_publishable_ObiIaFGmZAWOyATe9rIS2Q_m3kz0IOr"'
     }
 
     buildFeatures { buildConfig true }
