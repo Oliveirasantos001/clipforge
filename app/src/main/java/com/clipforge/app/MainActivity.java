@@ -169,6 +169,8 @@ public final class MainActivity extends Activity implements ClipForgeView.Action
     }
 
     @Override public void onAction(String a){
+        ClipCleanupJobService.cleanupNow(this);
+        ClipCleanupJobService.scheduleNext(this);
         if(BuildConfig.RELEASE_INTEGRITY_ENFORCED&&!IntegrityGuard.isTrusted(this)){
             blockTamperedBuild();
             return;
