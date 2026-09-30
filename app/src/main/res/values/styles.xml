@@ -1,0 +1,10 @@
+<resources>
+    <style name="Theme.ClipForge" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:statusBarColor">#080910</item>
+        <item name="android:navigationBarColor">#080910</item>
+        <item name="android:windowBackground">#080910</item>
+        <item name="android:colorAccent">#7B4DFF</item>
+    </style>
+</resources>
