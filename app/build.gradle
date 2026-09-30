@@ -15,6 +15,7 @@ android {
 
         buildConfigField 'String', 'MAIN_SUPABASE_URL', '"https://numasmkmeigyhwhqeffa.supabase.co"'
         buildConfigField 'String', 'MAIN_SUPABASE_KEY', '"sb_publishable_wafPUN1tFI19Y8Rwc38HXg_QuZwaPxZ"'
+        buildConfigField 'boolean', 'CLOUD_PIPELINE_ENABLED', 'false'
     }
 
     buildFeatures { buildConfig true }
