@@ -17,15 +17,22 @@ public final class ClipCleanupJobService extends JobService {
     private final ExecutorService worker=Executors.newSingleThreadExecutor();
 
     public static File clipsDir(Context context){
-        File d=new File(context.getFilesDir(),"clips");
+        File d=new File(context.getNoBackupFilesDir(),"clips");
         if(!d.exists())d.mkdirs();
         return d;
     }
 
     public static int cleanupNow(Context context){
-        File[] files=clipsDir(context).listFiles();
-        if(files==null)return 0;
         long cutoff=System.currentTimeMillis()-TTL_MS;
+        int removed=cleanupDir(clipsDir(context),cutoff);
+        File legacy=new File(context.getFilesDir(),"clips");
+        if(!legacy.equals(clipsDir(context)))removed+=cleanupDir(legacy,cutoff);
+        return removed;
+    }
+
+    private static int cleanupDir(File dir,long cutoff){
+        File[] files=dir.listFiles();
+        if(files==null)return 0;
         int removed=0;
         for(File f:files){
             if(f.isFile()&&f.lastModified()<=cutoff&&f.delete())removed++;
