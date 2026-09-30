@@ -31,6 +31,8 @@ public final class AppState {
     public String password = "";
     public String confirmPassword = "";
     public String authToken = null;
+    public String refreshToken = null;
+    public long sessionExpiresAtMs = 0L;
     public Uri selectedVideoUri = null;
     public String selectedVideoName = "Nenhum vídeo selecionado";
     public long selectedVideoDurationMs = 0L;
