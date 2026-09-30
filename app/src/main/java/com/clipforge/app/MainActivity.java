@@ -50,6 +50,7 @@ public final class MainActivity extends Activity implements ClipForgeView.Action
     private ConnectivityManager connectivityManager;
     private ConnectivityManager.NetworkCallback networkCallback;
     private AlertDialog vpnDialog;
+    private volatile boolean authBusy=false;
 
     @Override protected void onCreate(Bundle b){
         super.onCreate(b);
@@ -258,6 +259,7 @@ public final class MainActivity extends Activity implements ClipForgeView.Action
     }
 
     private void login(){
+        if(authBusy){toast("Aguarde a tentativa atual.");return;}
         s.email=InputGuard.normalizeEmail(s.email);
         if(!InputGuard.validEmail(s.email)||s.password==null||s.password.isEmpty()||s.password.length()>128){
             s.statusMessage="Informe e-mail e senha válidos.";
@@ -265,6 +267,7 @@ public final class MainActivity extends Activity implements ClipForgeView.Action
             return;
         }
         s.statusMessage="Entrando…";
+        authBusy=true;
         ui.refresh();
         worker.execute(()->{
             try{
@@ -273,14 +276,15 @@ public final class MainActivity extends Activity implements ClipForgeView.Action
                 storeSession(r);
                 s.password="";
                 s.confirmPassword="";
-                runOnUiThread(()->go(AppState.Screen.HOME));
+                runOnUiThread(()->{authBusy=false;go(AppState.Screen.HOME);});
             }catch(Exception e){
-                runOnUiThread(()->{s.statusMessage=err(e);ui.refresh();});
+                runOnUiThread(()->{authBusy=false;s.statusMessage=err(e);ui.refresh();});
             }
         });
     }
 
     private void signup(){
+        if(authBusy){toast("Aguarde a tentativa atual.");return;}
         s.email=InputGuard.normalizeEmail(s.email);
         if(!InputGuard.validName(s.userName)){s.statusMessage="Informe um nome válido.";ui.refresh();return;}
         if(!InputGuard.validEmail(s.email)){s.statusMessage="Informe um e-mail válido.";ui.refresh();return;}
@@ -288,6 +292,7 @@ public final class MainActivity extends Activity implements ClipForgeView.Action
         if(!s.password.equals(s.confirmPassword)){s.statusMessage="As senhas não coincidem.";ui.refresh();return;}
 
         s.statusMessage="Criando conta…";
+        authBusy=true;
         ui.refresh();
         worker.execute(()->{
             try{
@@ -297,27 +302,31 @@ public final class MainActivity extends Activity implements ClipForgeView.Action
                 s.password="";
                 s.confirmPassword="";
                 runOnUiThread(()->{
+                    authBusy=false;
                     toast("Conta criada e conectada.");
                     go(AppState.Screen.HOME);
                 });
             }catch(Exception e){
-                runOnUiThread(()->{s.statusMessage=err(e);ui.refresh();});
+                runOnUiThread(()->{authBusy=false;s.statusMessage=err(e);ui.refresh();});
             }
         });
     }
 
     private void reset(){
+        if(authBusy){toast("Aguarde a tentativa atual.");return;}
         s.email=InputGuard.normalizeEmail(s.email);
         if(!InputGuard.validEmail(s.email)){s.statusMessage="Informe um e-mail válido.";ui.refresh();return;}
+        authBusy=true;
         worker.execute(()->{
             try{
                 SupabaseApi.resetPassword(s.email);
                 runOnUiThread(()->{
+                    authBusy=false;
                     s.statusMessage="Se a conta existir, as instruções serão enviadas.";
                     ui.refresh();
                 });
             }catch(Exception e){
-                runOnUiThread(()->{s.statusMessage=err(e);ui.refresh();});
+                runOnUiThread(()->{authBusy=false;s.statusMessage=err(e);ui.refresh();});
             }
         });
     }
