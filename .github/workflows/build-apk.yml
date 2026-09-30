@@ -3,6 +3,7 @@ name: Build ClipForge APK
 on:
   push:
     branches: [ "main" ]
+    tags: [ "v*" ]
     paths:
       - "app/**"
       - "build.gradle"
@@ -15,7 +16,8 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  validate:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -41,15 +43,78 @@ jobs:
         with:
           gradle-version: "8.10.2"
 
-      - name: Build debug APK
+      - name: Compile debug validation build
         run: gradle :app:assembleDebug --stacktrace
 
+  signed-release:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install Android SDK packages
+        shell: bash
+        run: |
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then
+            SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | head -n 1)"
+          fi
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.10.2"
+
+      - name: Restore release signing key
+        shell: bash
+        env:
+          KEYSTORE_B64: ${{ secrets.CLIPFORGE_KEYSTORE_B64 }}
+        run: |
+          set +x
+          test -n "$KEYSTORE_B64" || { echo "Missing CLIPFORGE_KEYSTORE_B64 secret"; exit 1; }
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/clipforge-release.jks"
+          chmod 600 "$RUNNER_TEMP/clipforge-release.jks"
+
+      - name: Build signed release APK
+        env:
+          CLIPFORGE_KEYSTORE_PATH: ${{ runner.temp }}/clipforge-release.jks
+          CLIPFORGE_STORE_PASSWORD: ${{ secrets.CLIPFORGE_STORE_PASSWORD }}
+          CLIPFORGE_KEY_PASSWORD: ${{ secrets.CLIPFORGE_KEY_PASSWORD }}
+        run: |
+          test -n "$CLIPFORGE_STORE_PASSWORD" || { echo "Missing CLIPFORGE_STORE_PASSWORD secret"; exit 1; }
+          test -n "$CLIPFORGE_KEY_PASSWORD" || { echo "Missing CLIPFORGE_KEY_PASSWORD secret"; exit 1; }
+          gradle :app:assembleRelease --stacktrace
+
+      - name: Verify official APK signature
+        shell: bash
+        run: |
+          APK="app/build/outputs/apk/release/app-release.apk"
+          test -f "$APK"
+          APKSIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          "$APKSIGNER" verify --verbose --print-certs "$APK"
+          ACTUAL="$("$APKSIGNER" verify --print-certs "$APK" 2>/dev/null | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | tr -d ':' | tr '[:upper:]' '[:lower:]' | head -n1)"
+          EXPECTED="d37f12ff05a1eaa12a2d42281852ac7150d52df7667bf1628dd385104efbb88c"
+          test "$ACTUAL" = "$EXPECTED" || { echo "Unexpected signing certificate"; exit 1; }
+
       - name: APK SHA-256
-        run: sha256sum app/build/outputs/apk/debug/app-debug.apk
+        run: sha256sum app/build/outputs/apk/release/app-release.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ClipForge-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: ClipForge-v0.2.1-signed-release
+          path: app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30
+
+      - name: Remove signing key from runner
+        if: always()
+        shell: bash
+        run: rm -f "$RUNNER_TEMP/clipforge-release.jks"
