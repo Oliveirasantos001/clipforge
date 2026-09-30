@@ -142,7 +142,38 @@ public final class VideoClipper {
             if(output.exists())output.delete();
             throw new IllegalStateException("O arquivo de clip gerado ficou inválido.");
         }
+        validateOutput(output);
         return output;
+    }
+
+    private static void validateOutput(File output)throws Exception{
+        MediaExtractor check=new MediaExtractor();
+        MediaMetadataRetriever mmr=new MediaMetadataRetriever();
+        try{
+            check.setDataSource(output.getAbsolutePath());
+            boolean hasVideo=false;
+            for(int i=0;i<check.getTrackCount();i++){
+                MediaFormat f=check.getTrackFormat(i);
+                String mime=f.getString(MediaFormat.KEY_MIME);
+                if(mime!=null&&mime.startsWith("video/")){
+                    hasVideo=true;
+                    break;
+                }
+            }
+            if(!hasVideo)throw new IllegalStateException("O clip final não contém uma faixa de vídeo válida.");
+
+            mmr.setDataSource(output.getAbsolutePath());
+            String duration=mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+            long durationMs=0L;
+            try{if(duration!=null)durationMs=Long.parseLong(duration);}catch(Exception ignored){}
+            if(durationMs<=0)throw new IllegalStateException("A duração do clip final ficou inválida.");
+        }catch(Exception e){
+            if(output.exists())output.delete();
+            throw e;
+        }finally{
+            try{check.release();}catch(Exception ignored){}
+            try{mmr.release();}catch(Exception ignored){}
+        }
     }
 
     private static long findVideoSyncStart(Context context,Uri source,long requestedStartUs)throws Exception{
